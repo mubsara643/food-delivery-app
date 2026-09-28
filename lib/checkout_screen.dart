@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'order_tracking_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -37,16 +36,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     loadSavedDetails();
   }
 
+  // Har user ka data uske apne document (users/{uid}) se load hota hai
   Future<void> loadSavedDetails() async {
-    final prefs = await SharedPreferences.getInstance();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-    if (!mounted) return;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
-    nameController.text = prefs.getString('customer_name') ?? '';
-    phoneController.text = prefs.getString('customer_phone') ?? '';
-    addressController.text = prefs.getString('customer_address') ?? '';
-    instructionsController.text =
-        prefs.getString('customer_instructions') ?? '';
+      if (!mounted || !doc.exists) return;
+
+      final data = doc.data() ?? {};
+
+      nameController.text = (data['customer_name'] ?? '').toString();
+      phoneController.text = (data['customer_phone'] ?? '').toString();
+      addressController.text = (data['customer_address'] ?? '').toString();
+      instructionsController.text =
+          (data['customer_instructions'] ?? '').toString();
+    } catch (_) {
+      // Load fail ho to form khali rahega, order phir bhi ho sakta hai
+    }
   }
 
   @override
@@ -68,26 +80,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setString(
-        'customer_name',
-        nameController.text.trim(),
-      );
-      await prefs.setString(
-        'customer_phone',
-        phoneController.text.trim(),
-      );
-      await prefs.setString(
-        'customer_address',
-        addressController.text.trim(),
-      );
-      await prefs.setString(
-        'customer_instructions',
-        instructionsController.text.trim(),
-      );
-
       final user = FirebaseAuth.instance.currentUser;
+
+      // Details sirf usi user ke document mein save hongi
+      // (merge: true ki wajah se role waghera delete nahi hoga)
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .set({
+          'customer_name': nameController.text.trim(),
+          'customer_phone': phoneController.text.trim(),
+          'customer_address': addressController.text.trim(),
+          'customer_instructions': instructionsController.text.trim(),
+        }, SetOptions(merge: true));
+      }
 
       await FirebaseFirestore.instance.collection('orders').add({
         'userId': user?.uid,
@@ -407,5 +414,3 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 }
-
-

@@ -16,6 +16,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   bool isLogin = true;
   bool loading = false;
+  bool isOwnerSignup = false;
 
   Future<void> submit() async {
     if (emailController.text.trim().isEmpty ||
@@ -39,6 +40,17 @@ class _AuthScreenState extends State<AuthScreen> {
           email: emailController.text.trim(),
           password: passwordController.text.trim(),
         );
+
+        final newUser = FirebaseAuth.instance.currentUser;
+        if (newUser != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(newUser.uid)
+              .set({
+            'email': newUser.email,
+            'role': isOwnerSignup ? 'owner' : 'customer',
+          }, SetOptions(merge: true));
+        }
       }
 
       if (!mounted) return;
@@ -62,6 +74,16 @@ if (user != null) {
     return;
   }
 }
+
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    content: Text(
+      isLogin
+          ? 'Logged in as ${FirebaseAuth.instance.currentUser?.email ?? ''}'
+          : 'Account created. You are logged in as ${FirebaseAuth.instance.currentUser?.email ?? ''}',
+    ),
+  ),
+);
 
 Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
@@ -140,6 +162,34 @@ Navigator.pop(context);
                 ),
               ),
             ),
+            if (!isLogin) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.black12),
+                ),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  activeColor: const Color(0xFF1E3B32),
+                  value: isOwnerSignup,
+                  onChanged: loading
+                      ? null
+                      : (val) {
+                          setState(() => isOwnerSignup = val);
+                        },
+                  title: const Text(
+                    'Register as Restaurant / Home Kitchen Owner',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: loading ? null : submit,

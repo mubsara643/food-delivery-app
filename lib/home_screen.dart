@@ -86,6 +86,70 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void openAccount() {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFF2ECE1),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Logged in as',
+                style: GoogleFonts.poppins(fontSize: 12, color: Colors.black54),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                user.email ?? '',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1E3B32),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3B32),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    await FirebaseAuth.instance.signOut();
+                  },
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Logout'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const darkGreen = Color(0xFF1E3B32);
@@ -171,14 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 6),
                   _topIcon(
                     icon: Icons.person_outline,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AuthScreen(),
-                        ),
-                      );
-                    },
+                    onTap: openAccount,
                   ),
                 ],
               ),
